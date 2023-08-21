@@ -1,39 +1,34 @@
 import React, { useEffect, useState } from "react";
 import { IAlbumResponse } from "../services/types";
-import { fetchAlbumsData } from "../services/api";
-import useDebounce from "../hooks/useDebounce";
 
 import "./Autocomplete.css";
+export interface IAutoCompleteProps<TOptions> {
+  options: TOptions[];
+  searchQuery: string;
+  onChange: (optionTitle: string) => void;
+  error: string | undefined;
+}
 
-const linkRefs = [];
-
-const AutoComplete = () => {
-  const [error, setError] = useState(undefined);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [results, setResults] = useState<IAlbumResponse[] | []>([]);
+const AutoComplete = ({
+  options,
+  searchQuery,
+  onChange,
+  error,
+}: IAutoCompleteProps<IAlbumResponse>) => {
+  const [inputOptions, setInputOptions] = useState<IAlbumResponse[]>([]);
 
   // focusedRowId is used for the purposes of onKeyDown functionality implementation
   const [focusedRowId, setFocusedRowId] = useState(0);
 
-  const debounceValue = useDebounce(searchQuery);
-
   useEffect(() => {
-    if (debounceValue.length > 0) getAlbums(debounceValue);
-  }, [debounceValue]);
-
-  const getAlbums = (value: string) => {
-    fetchAlbumsData(value)
-      .then((res) => res.json())
-      .then((albumsData) => setResults(albumsData))
-      .catch((err) => setError(err));
-  };
-
+    if (options.length > 0) setInputOptions(options);
+  }, [options]);
 
   const onSelectKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     switch (e.key) {
       case "Enter":
-        if (focusedRowId !== -1) {
-          setSearchQuery(results[focusedRowId].title);
+        if (focusedRowId !== -1 && inputOptions.length !== 0) {
+          onChange(inputOptions[focusedRowId].title);
         }
 
         break;
@@ -43,7 +38,7 @@ const AutoComplete = () => {
         }
         break;
       case "ArrowDown":
-        if (focusedRowId < results.length - 1) {
+        if (focusedRowId < inputOptions.length - 1) {
           setFocusedRowId(focusedRowId + 1);
         }
         break;
@@ -57,7 +52,7 @@ const AutoComplete = () => {
         <input
           type="text"
           className="input"
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
           onKeyDown={onSelectKeyDown}
           value={searchQuery}
         />
@@ -68,30 +63,25 @@ const AutoComplete = () => {
           {"An error has occured while fetching the result"}
         </div>
       )}
-      {searchQuery.length > 0 && !results?.length && !error && (
+      {searchQuery.length > 0 && !inputOptions?.length && !error && (
         <div className="search-results-empty">
           {"No matching results are found"}
         </div>
       )}
       <div className="search-results">
         {searchQuery.length > 0 &&
-          results.map((album, index) => {
-            const modifiedAlbumTitle = album.title.replace(
-              new RegExp(searchQuery.toLocaleLowerCase()),
-              (matchedText) => `<mark>${matchedText}</mark>`
-            );
-
+          inputOptions.map((album, index) => {
+            const searchRegExp = new RegExp(`${searchQuery.toLocaleLowerCase()}`)
+            const splitAlbumTitle = album.title.split(searchRegExp)
+            const modifiedAlbumTitle = splitAlbumTitle.join(`<mark>${searchQuery}</mark>`);
             return (
               <div
                 className={`search-results-item  ${
                   focusedRowId === index ? "search-results-item-active" : null
                 }`}
                 key={index}
-                onClick={() => setSearchQuery(album.title)}
+                onClick={() => onChange(album.title)}
                 dangerouslySetInnerHTML={{ __html: modifiedAlbumTitle }}
-                ref={(link) => {
-                  linkRefs[index] = link;
-                }}
               />
             );
           })}

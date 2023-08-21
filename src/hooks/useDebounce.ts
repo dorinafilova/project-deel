@@ -5,6 +5,7 @@ const useDebounce = (value: string) => {
     const [state, setState] = useState(value);
     useEffect(() => {
         const handler = setTimeout(() => setState(value), DEBOUNCE_TIME_IN_MS);
+        
         return () => clearTimeout(handler);
     }, [value]);
     return state;
